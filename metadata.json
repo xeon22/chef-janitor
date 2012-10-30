@@ -1,0 +1,33 @@
+{
+  "name": "janitor",
+  "description": "A General Cookbook used to cleanup files and directories on nodes",
+  "long_description": "Description\n===========\nThis cookbook is meant to keep order on a running node to purge files\non the filesystem that are unwanted.  You could also apply some criteria to the files\nthat are targeted such as glob patterns, age, and size.\n\nRequirements\n============\nChef, Linux\n\nActions\n=======\nAction  | Description                       | Default\n------- |---------------------------------- |---------\npurge   | Purge the files in the directory  |\n        | passed in the janitory_directory  |\n        | LWRP and use various criteria     |\n        | such age file age, file size      |\n\nAttributes\n==========\nNo attributes are required for the use of this cookbook\n\nUsage\n=====\nAn LWRP \"janitor_directory\" is provided for declaring a directory\nfor which to search in and purge files in that directory.\nSome criteria can also be supplied to include an age and size threshold.\n\nExamples\n========\n\n-- This will delete all files with the .log extension in /tmp\njanitor_directory \"/tmp\" do\n  include_files\t[\"*.log\"]\n  action        :purge\nend\n\n-- This will delete all files in the /var/log directory recursively,\n-- that are larger than 1 MegaByte\njanitor_directory \"/var/log\" do\n  include_files [\"*.log\"]\n  size\t\t\t\"1M\"\n  recursive\t\ttrue\n  action \t\t:purge\nend\n\n-- This will delete all files in the /var/log directory recursively,\n-- that are older than 5 days\njanitor_directory \"/var/log\" do\n  include_files\t[\"*.log\"]\n  age\t\t\t5\n  recursive\t\ttrue\n  action \t\t:purge\nend\n",
+  "maintainer": "Mark Pimentel",
+  "maintainer_email": "markpimentel22@gmail.com",
+  "license": "Apache 2.0",
+  "platforms": {
+    "redhat": ">= 0.0.0",
+    "centos": ">= 0.0.0",
+    "debian": ">= 0.0.0",
+    "ubuntu": ">= 0.0.0"
+  },
+  "dependencies": {
+  },
+  "recommendations": {
+  },
+  "suggestions": {
+  },
+  "conflicting": {
+  },
+  "providing": {
+  },
+  "replacing": {
+  },
+  "attributes": {
+  },
+  "groupings": {
+  },
+  "recipes": {
+  },
+  "version": "0.0.1"
+}
