@@ -20,6 +20,7 @@ action :purge do
         begin
           ::FileUtils.rm_f(f)
           Chef::Log.info("#{new_resource.resource_name}[#{new_resource.name}] file #{f} exceeds age of #{new_resource.age} days: action #{new_resource.action} (#{new_resource.defined_at})")
+          new_resource.updated_by_last_action(true)
         rescue Exception=>e
           Chef::Log.warn("Unable to delete #{f}: #{e}")
         end
@@ -30,6 +31,7 @@ action :purge do
         begin
           ::FileUtils.rm_f(f)
           Chef::Log.info("#{new_resource.resource_name}[#{new_resource.name}] file #{f} exceeds size #{new_resource.size}: action #{new_resource.action.to_s} (#{new_resource.defined_at})")
+          new_resource.updated_by_last_action(true)
         rescue Exception=>e
           Chef::Log.warn("Unable to delete #{f}: #{e}")
         end
@@ -39,6 +41,7 @@ action :purge do
       begin
         ::FileUtils.rm_f(f)
         Chef::Log.info("#{new_resource.resource_name}[#{new_resource.name}] file #{f} no extra critiria defined: action #{new_resource.action} (#{new_resource.defined_at})")
+        new_resource.updated_by_last_action(true)
       rescue Exception=>e
         Chef::Log.warn("Unable to delete #{f}: #{e}")
       end
