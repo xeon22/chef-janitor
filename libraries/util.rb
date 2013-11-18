@@ -15,63 +15,69 @@
 # limitations under the License.
 #
 
-module Janitor
-  require 'rake'
-    
+class Janitor
+
+  def initialize(path)
+    raise "Directory not found: #{path}" unless File.directory?(path)
+  end
+
   def self.convert_to_epoch(days)
   	return days - (60 * 60 * 24 * days.to_i)
   end
   
   def self.file_exceeds_age(file, days)
   	time = Time.now
-  	tstamp = time.strftime("%b%d%Y-%H%M")
-  	
-    filetime = ::File.new(file).mtime.to_i
+
+    file_time = File.stat(file).mtime.to_i
     purge_time = time - convert_to_epoch(days)
     
-    return true if filetime < purge_time.to_i
+    return true if file_time < purge_time.to_i
   end
   
-  def self.filelist(path, recursive, include_glob, exclude_glob)
+  def self.file_list(path, recursive, includes, excludes)
     # Iterate over all files to find the matching criteria for deletion
-    files = ::FileList.new() do |f|
-      exclude_glob.each do |t|
-        r = Regexp.try_convert(t)
-        f.exclude(r) unless r.nil?
-      end
+    if recursive
+      path_str = File.join(path, '**', '*')
+    else
+      path_str = File.join(path, '*')
     end
-  
-    include_glob.each do |t|
-      include_str = ::File.join(path, t)
-      include_str = ::File.join(path, "**", t) if recursive
-      files.include(include_str)
+
+    files = Dir[path_str]
+
+    Chef::Log.debug("#{files.length} files to process")
+
+    files.select! do |f|
+      regex_inc = Regexp.union(includes)
+      f.match(regex_inc) unless regex_inc.nil?
     end
-      
+
+    Chef::Log.debug("#{files.length} files matched")
     return files
   end
   
-  def self.oldfile(file,age,isold=false)
-    if file_exceeds_age(file, age)
-      isold = true
+  def self.oldfile(file,age)
+    unless File.directory?(file)
+      file_exceeds_age(file, age)
     end
-  
-    return isold
   end
   
-  def self.bigfile(file,size,isbig=false)
-    c = SizeConversion.new(size)
-    maxsize = c.to_size(:b)
-    if ::File.new(file).size > maxsize
-      isbig = true
+  def self.bigfile(file,size)
+    unless File.directory?(file)
+      c = SizeConversion.new(size)
+      maxsize = c.to_size(:b)
+
+      File.size?(file) > maxsize
     end
-  
-    return isbig
   end
-  
+
+  def self.longest_word(list)
+    list.group_by(&:size).max.last
+  end
+
   class SizeConversion
     def initialize(size)
     	@units = { 
-      	:b => 1,
+      	:b  => 1,
         :kb => 1024**1,
         :mb => 1024**2,
         :gb => 1024**3,
@@ -80,33 +86,32 @@ module Janitor
         :eb => 1024**6
       }
   
-    	@sizeunit = String.new
-      @sizeint 	= size.partition(/\D{1,2}/).at(0).to_i
-      unit = size.partition(/\D{1,2}/).at(1).to_s.downcase
+    	@size_unit  = String.new
+      @size_int 	= size.partition(/\D{1,2}/).at(0).to_i
+      unit        = size.partition(/\D{1,2}/).at(1).to_s.downcase
     	
       case 
       when unit.match(/[kmgtpe]{1}/)
         # append the b
-        @sizeunit = unit.concat('b')
+        @size_unit = unit.concat('b')
       when unit.match(/[kmgtpe]{1}b/)
-        @sizeunit = unit
+        @size_unit = unit
       else
-        @sizeunit = 'b'
+        @size_unit = 'b'
       end
     end
     
     def to_size(unit, places=1)
     	# expects bytes, returns chosen unit
-      bytes = @sizeint * @units[@sizeunit.to_sym]
+      bytes = @size_int * @units[@size_unit.to_sym]
       size = bytes / @units[unit]
-      return size
-      # return sprintf("%.#{places}f", bytes / unitval)
+      # return sprintf("%.#{places}f", bytes / unit_val)
     end
   
     def from_size(places=1)
     	# expects any, returns bytes
-      unitval = @units[@sizeunit.to_s.downcase.to_sym]
-      return sprintf("%.#{places}f", @sizeint * unitval)
+      unit_val = @units[@size_unit.to_s.downcase.to_sym]
+      return sprintf("%.#{places}f", @size_int * unit_val)
     end
   end
 end

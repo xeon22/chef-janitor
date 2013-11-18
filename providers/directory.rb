@@ -18,41 +18,55 @@
 # An lwrp for cleaning up directories
 
 action :purge do
-  raise "Directory #{new_resource.path} not found" unless ::Dir.exists?(new_resource.path)
+  name        = new_resource.name
+  path        = new_resource.path
+  age         = new_resource.age
+  size        = new_resource.size
+  recursive   = new_resource.recursive
+  includes    = new_resource.includes
+  excludes    = new_resource.excludes
+  debug_mode  = new_resource.debug_mode
+
+  action      = new_resource.action
+  defined_at  = new_resource.defined_at
+
+  raise "Directory #{path} not found" unless ::Dir.exists?(path)
   
   # Iterate over all files to find the matching criteria for deletion
-  fl = filelist(new_resource.path, new_resource.recursive, new_resource.include_files, new_resource.exclude_files)
+  fl = Janitor.file_list(path, recursive, includes, excludes)
+
+  Chef::Log.info(fl)
 
   fl.each do |f|
 		Chef::Log.debug("Examining file: #{f}")
 		case
-		when !new_resource.age.nil?
-			Chef::Log.debug("Max file age attribute defined to #{new_resource.age} days")
-			if oldfile(f)
+		when not(age.nil?)
+			Chef::Log.debug("Max file age attribute defined to #{age} days")
+			if Janitor.oldfile(f,age)
         begin
-          ::FileUtils.rm_f(f)
-          Chef::Log.info("#{new_resource.resource_name}[#{new_resource.name}] file #{f} exceeds age of #{new_resource.age} days: action #{new_resource.action} (#{new_resource.defined_at})")
+          ::FileUtils.rm_f(f, verbose => true) unless debug_mode
+          Chef::Log.info("Purging file older than #{age} days: #{f}")
           new_resource.updated_by_last_action(true)
         rescue Exception=>e
-          Chef::Log.warn("Unable to delete #{f}: #{e}")
+          Chef::Log.warn("Unable to delete #{f}: #{e.message}")
         end
 			end
 
-		when !new_resource.size.nil?
-			if bigfile(f)
+		when not(size.nil?)
+			if Janitor.bigfile(f,size)
         begin
-          ::FileUtils.rm_f(f)
-          Chef::Log.info("#{new_resource.resource_name}[#{new_resource.name}] file #{f} exceeds size #{new_resource.size}: action #{new_resource.action.to_s} (#{new_resource.defined_at})")
+          ::FileUtils.rm_f(f) unless debug_mode
+          Chef::Log.info("Purging file exceeding #{size}: #{f}")
           new_resource.updated_by_last_action(true)
         rescue Exception=>e
-          Chef::Log.warn("Unable to delete #{f}: #{e}")
+          Chef::Log.warn("Unable to delete #{f}: #{e.message}")
         end
 			end
 
-		when (new_resource.age.nil? && new_resource.size.nil?)
+		when not(age.nil? && size.nil?)
       begin
-        ::FileUtils.rm_f(f)
-        Chef::Log.info("#{new_resource.resource_name}[#{new_resource.name}] file #{f} no extra critiria defined: action #{new_resource.action} (#{new_resource.defined_at})")
+        ::FileUtils.rm_f(f) unless debug_mode
+        Chef::Log.info("File #{f} no extra critiria defined: action #{new_resource.action} (#{new_resource.defined_at})")
         new_resource.updated_by_last_action(true)
       rescue Exception=>e
         Chef::Log.warn("Unable to delete #{f}: #{e}")
