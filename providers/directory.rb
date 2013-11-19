@@ -17,6 +17,10 @@
 
 # An lwrp for cleaning up directories
 
+def whyrun_supported?
+  true
+end
+
 action :purge do
   name        = new_resource.name
   path        = new_resource.path
@@ -25,54 +29,59 @@ action :purge do
   recursive   = new_resource.recursive
   includes    = new_resource.includes
   excludes    = new_resource.excludes
-  debug_mode  = new_resource.debug_mode
-
-  action      = new_resource.action
-  defined_at  = new_resource.defined_at
 
   raise "Directory #{path} not found" unless ::Dir.exists?(path)
   
   # Iterate over all files to find the matching criteria for deletion
-  fl = Janitor.file_list(path, recursive, includes, excludes)
+  fl = Janitor::Directory.new(path, :recursive => recursive)
 
-  Chef::Log.info(fl)
+  Chef::Log.info("Found #{fl.to_hash.length} files to process")
 
-  fl.each do |f|
-		Chef::Log.debug("Examining file: #{f}")
-		case
-		when not(age.nil?)
-			Chef::Log.debug("Max file age attribute defined to #{age} days")
-			if Janitor.oldfile(f,age)
-        begin
-          ::FileUtils.rm_f(f, verbose => true) unless debug_mode
-          Chef::Log.info("Purging file older than #{age} days: #{f}")
-          new_resource.updated_by_last_action(true)
-        rescue Exception=>e
-          Chef::Log.warn("Unable to delete #{f}: #{e.message}")
+  case
+    when (!age.nil? and !size.nil?)
+      # Execute both
+      list = fl.older_than(age)
+      longest_str = list.keys.group_by(&:size).max.first
+
+      list.each do |file,data|
+        time_str = Time.at(data['mtime']).strftime("%Y-%m-%d")
+        converge_by("delete %-#{longest_str}s => %-#{time_str.length}s" % [file, time_str]) do
+          delete file
         end
-			end
-
-		when not(size.nil?)
-			if Janitor.bigfile(f,size)
-        begin
-          ::FileUtils.rm_f(f) unless debug_mode
-          Chef::Log.info("Purging file exceeding #{size}: #{f}")
-          new_resource.updated_by_last_action(true)
-        rescue Exception=>e
-          Chef::Log.warn("Unable to delete #{f}: #{e.message}")
-        end
-			end
-
-		when not(age.nil? && size.nil?)
-      begin
-        ::FileUtils.rm_f(f) unless debug_mode
-        Chef::Log.info("File #{f} no extra critiria defined: action #{new_resource.action} (#{new_resource.defined_at})")
-        new_resource.updated_by_last_action(true)
-      rescue Exception=>e
-        Chef::Log.warn("Unable to delete #{f}: #{e}")
       end
-		else
-			Chef::Log.debug("Cannot determine suitable rule for deletion for file: #{f}")
-		end
-	end
+
+      list = fl.larger_than(size)
+      longest_str = list.keys.group_by(&:size).max.first
+
+      list.each do |file,data|
+        convert = Janitor::SizeConversion.new("#{data[size]}b")
+        converge_by("delete %-#{longest_str}s => %-8smb" % [file, convert.to_size(:mb)]) do
+          delete file
+        end
+      end
+
+    when !age.nil?
+      # Age only
+      list = fl.older_than(age)
+      longest_str = list.keys.group_by(&:size).max.first
+
+      list.each do |file,data|
+        time_str = Time.at(data['mtime']).strftime("%Y-%m-%d")
+        converge_by("delete %-#{longest_str}s => %-#{time_str.length}s" %  [file, time_str]) do
+          delete file
+        end
+      end
+
+    when !size.nil?
+      # Size only
+      list = fl.larger_than(size)
+      longest_str = list.keys.group_by(&:size).max.first
+
+      list.each do |file,data|
+        convert = Janitor::SizeConversion.new("#{data[size]}b")
+        converge_by("delete %-#{longest_str}s => %-8smb" % [file, convert.to_size(:mb)]) do
+          delete file
+        end
+      end
+  end
 end
