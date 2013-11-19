@@ -31,12 +31,12 @@ module Janitor
       Dir[path_str].each do |file|
         fstat = File.stat(file)
         @file_table.store(
-            file,
-            {
-                'ctime' => fstat.ctime.to_i,
-                'mtime' => fstat.mtime.to_i,
-                'size'  => fstat.size
-            }
+          file,
+          {
+            'ctime' => fstat.ctime.to_i,
+            'mtime' => fstat.mtime.to_i,
+            'size' => fstat.size
+          }
         )
       end
     end
@@ -44,17 +44,17 @@ module Janitor
     def older_than(days)
       purge_time = Time.now - (60 * 60 * 24 * days.to_i)
 
-      list = @file_table.select do |file,data|
-               data['mtime'] < purge_time.to_i
-             end
+      list = @file_table.select do |file, data|
+        data['mtime'] < purge_time.to_i
+      end
 
       return list
     end
 
     def larger_than(size)
-      list = @file_table.select do |file,data|
-               c = SizeConversion.new(size.to_s)
-               data['size'].to_f > c.to_size(:b).to_f
+      list = @file_table.select do |file, data|
+        c = SizeConversion.new(size.to_s)
+        data['size'].to_f > c.to_size(:b).to_f
       end
       return list
     end
@@ -74,7 +74,7 @@ module Janitor
     end
 
     def get_list
-      @file_table.each_key {|t| puts t }
+      @file_table.each_key { |t| puts t }
       puts "Current number of files: #{@file_table.length}"
     end
 
@@ -86,26 +86,28 @@ module Janitor
   class SizeConversion
     def initialize(size)
       @units = {
-          :b => 1,
-          :kb => 1024**1,
-          :mb => 1024**2,
-          :gb => 1024**3,
-          :tb => 1024**4,
-          :pb => 1024**5,
-          :eb => 1024**6
+        :b => 1,
+        :kb => 1024**1,
+        :mb => 1024**2,
+        :gb => 1024**3,
+        :tb => 1024**4,
+        :pb => 1024**5,
+        :eb => 1024**6
       }
 
       @size_int = size.partition(/\D{1,2}/).at(0).to_i
       unit = size.partition(/\D{1,2}/).at(1).to_s.downcase
 
       case
-        when unit.match(/[kmgtpe]{1}/)
-          # append the b
-          @size_unit = unit.concat('b')
-        when unit.match(/[kmgtpe]{1}b/)
-          @size_unit = unit
-        else
-          @size_unit = 'b'
+      when unit.match(/[kmgtpe]{1}/)
+        # append the b
+        @size_unit = unit.concat('b')
+
+      when unit.match(/[kmgtpe]{1}b/)
+        @size_unit = unit
+
+      else
+        @size_unit = 'b'
       end
     end
 

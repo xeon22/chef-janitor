@@ -22,16 +22,16 @@ def whyrun_supported?
 end
 
 action :purge do
-  name        = new_resource.name
-  path        = new_resource.path
-  age         = new_resource.age
-  size        = new_resource.size
-  recursive   = new_resource.recursive
-  include_only    = new_resource.include_only
-  exclude_all    = new_resource.exclude_all
+  name = new_resource.name
+  path = new_resource.path
+  age = new_resource.age
+  size = new_resource.size
+  recursive = new_resource.recursive
+  include_only = new_resource.include_only
+  exclude_all = new_resource.exclude_all
 
   raise "Directory #{path} not found" unless ::Dir.exists?(path)
-  
+
   # Iterate over all files to find the matching criteria for deletion
   fl = Janitor::Directory.new(path, :recursive => recursive)
 
@@ -41,51 +41,51 @@ action :purge do
   Chef::Log.info("#{fl.to_hash.length} files to process")
 
   case
-    when (!age.nil? and !size.nil?)
-      # Execute both
-      list = fl.older_than(age)
-      longest_str = list.keys.group_by(&:size).max.first
+  when (!age.nil? and !size.nil?)
+    # Execute both
+    list = fl.older_than(age)
+    longest_str = list.keys.group_by(&:size).max.first
 
-      list.each do |file,data|
-        time_str = Time.at(data['mtime']).strftime("%Y-%m-%d")
-        converge_by("delete %-#{longest_str}s => %-#{time_str.length}s" % [file, time_str]) do
-          delete file
-        end
+    list.each do |file, data|
+      time_str = Time.at(data['mtime']).strftime("%Y-%m-%d")
+      converge_by("delete %-#{longest_str}s => %-#{time_str.length}s" % [file, time_str]) do
+        delete file
       end
+    end
 
-      list = fl.larger_than(size)
-      longest_str = list.keys.group_by(&:size).max.first
+    list = fl.larger_than(size)
+    longest_str = list.keys.group_by(&:size).max.first
 
-      list.each do |file,data|
-        convert = Janitor::SizeConversion.new("#{data[size]}b")
-        converge_by("delete %-#{longest_str}s => %-8smb" % [file, convert.to_size(:mb)]) do
-          delete file
-        end
+    list.each do |file, data|
+      convert = Janitor::SizeConversion.new("#{data[size]}b")
+      converge_by("delete %-#{longest_str}s => %-8smb" % [file, convert.to_size(:mb)]) do
+        delete file
       end
+    end
 
-    when !age.nil?
-      # Age only
-      list = fl.older_than(age)
-      longest_str = list.keys.group_by(&:size).max.first
+  when !age.nil?
+    # Age only
+    list = fl.older_than(age)
+    longest_str = list.keys.group_by(&:size).max.first
 
-      list.each do |file,data|
-        time_str = Time.at(data['mtime']).strftime("%Y-%m-%d")
-        converge_by("delete %-#{longest_str}s => %-#{time_str.length}s" %  [file, time_str]) do
-          delete file
-        end
+    list.each do |file, data|
+      time_str = Time.at(data['mtime']).strftime("%Y-%m-%d")
+      converge_by("delete %-#{longest_str}s => %-#{time_str.length}s" % [file, time_str]) do
+        delete file
       end
+    end
 
-    when !size.nil?
-      # Size only
-      list = fl.larger_than(size)
-      longest_str = list.keys.group_by(&:size).max.first
+  when !size.nil?
+    # Size only
+    list = fl.larger_than(size)
+    longest_str = list.keys.group_by(&:size).max.first
 
-      list.each do |file,data|
-        convert = Janitor::SizeConversion.new("#{data[size]}b")
-        converge_by("delete %-#{longest_str}s => %-8smb" % [file, convert.to_size(:mb)]) do
-          delete file
-        end
+    list.each do |file, data|
+      convert = Janitor::SizeConversion.new("#{data[size]}b")
+      converge_by("delete %-#{longest_str}s => %-8smb" % [file, convert.to_size(:mb)]) do
+        delete file
       end
+    end
   end
 
   new_resource.updated_by_last_action(true)

@@ -1,4 +1,4 @@
-
+name             "janitor"
 maintainer       "Mark Pimentel"
 maintainer_email "markpimentel22@gmail.com"
 license          "Apache 2.0"
