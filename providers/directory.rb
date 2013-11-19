@@ -27,15 +27,18 @@ action :purge do
   age         = new_resource.age
   size        = new_resource.size
   recursive   = new_resource.recursive
-  includes    = new_resource.includes
-  excludes    = new_resource.excludes
+  include_only    = new_resource.include_only
+  exclude_all    = new_resource.exclude_all
 
   raise "Directory #{path} not found" unless ::Dir.exists?(path)
   
   # Iterate over all files to find the matching criteria for deletion
   fl = Janitor::Directory.new(path, :recursive => recursive)
 
-  Chef::Log.info("Found #{fl.to_hash.length} files to process")
+  fl.include_only(Regexp.union(include_only)) unless include_only.nil?
+  fl.exclude_all(Regexp.union(exclude_all)) unless exclude_all.nil?
+
+  Chef::Log.info("#{fl.to_hash.length} files to process")
 
   case
     when (!age.nil? and !size.nil?)
@@ -84,4 +87,6 @@ action :purge do
         end
       end
   end
+
+  new_resource.updated_by_last_action(true)
 end

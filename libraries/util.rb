@@ -59,10 +59,18 @@ module Janitor
       return list
     end
 
-    def filter(regexp)
-      @file_table.select do |file,data|
+    def include_only(regexp)
+      @file_table.keep_if do |file|
         file.match(Regexp.new(regexp))
       end
+      return @file_table
+    end
+
+    def exclude_all(regexp)
+      @file_table.delete_if do |file|
+        file.match(Regexp.new(regexp))
+      end
+      return @file_table
     end
 
     def get_list
