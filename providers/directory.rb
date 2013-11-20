@@ -17,48 +17,95 @@
 
 # An lwrp for cleaning up directories
 
-action :purge do
-  raise "Directory #{new_resource.path} not found" unless ::Dir.exists?(new_resource.path)
-  
-  # Iterate over all files to find the matching criteria for deletion
-  fl = filelist(new_resource.path, new_resource.recursive, new_resource.include_files, new_resource.exclude_files)
-
-  fl.each do |f|
-		Chef::Log.debug("Examining file: #{f}")
-		case
-		when !new_resource.age.nil?
-			Chef::Log.debug("Max file age attribute defined to #{new_resource.age} days")
-			if oldfile(f)
-        begin
-          ::FileUtils.rm_f(f)
-          Chef::Log.info("#{new_resource.resource_name}[#{new_resource.name}] file #{f} exceeds age of #{new_resource.age} days: action #{new_resource.action} (#{new_resource.defined_at})")
-          new_resource.updated_by_last_action(true)
-        rescue Exception=>e
-          Chef::Log.warn("Unable to delete #{f}: #{e}")
-        end
-			end
-
-		when !new_resource.size.nil?
-			if bigfile(f)
-        begin
-          ::FileUtils.rm_f(f)
-          Chef::Log.info("#{new_resource.resource_name}[#{new_resource.name}] file #{f} exceeds size #{new_resource.size}: action #{new_resource.action.to_s} (#{new_resource.defined_at})")
-          new_resource.updated_by_last_action(true)
-        rescue Exception=>e
-          Chef::Log.warn("Unable to delete #{f}: #{e}")
-        end
-			end
-
-		when (new_resource.age.nil? && new_resource.size.nil?)
-      begin
-        ::FileUtils.rm_f(f)
-        Chef::Log.info("#{new_resource.resource_name}[#{new_resource.name}] file #{f} no extra critiria defined: action #{new_resource.action} (#{new_resource.defined_at})")
-        new_resource.updated_by_last_action(true)
-      rescue Exception=>e
-        Chef::Log.warn("Unable to delete #{f}: #{e}")
-      end
-		else
-			Chef::Log.debug("Cannot determine suitable rule for deletion for file: #{f}")
-		end
-	end
+def whyrun_supported?
+  true
 end
+
+action :purge do
+  name = new_resource.name
+  path = new_resource.path
+  age = new_resource.age
+  size = new_resource.size
+  recursive = new_resource.recursive
+  include_only = new_resource.include_only
+  exclude_all = new_resource.exclude_all
+
+  raise "Directory #{path} not found" unless ::Dir.exists?(path)
+
+  # Iterate over all files to find the matching criteria for deletion
+  fl = Janitor::Directory.new(path, :recursive => recursive)
+
+  fl.include_only(Regexp.union(include_only)) unless include_only.nil?
+  fl.exclude_all(Regexp.union(exclude_all)) unless exclude_all.nil?
+
+  Chef::Log.info("#{fl.to_hash.length} files to process")
+
+  case
+  when (!age.nil? and !size.nil?)
+    # Execute both
+    list = fl.older_than(age)
+    longest_str = list.keys.group_by(&:size).max.first
+
+    list.each do |file, data|
+      time_str = Time.at(data['mtime']).strftime("%Y-%m-%d")
+      converge_by("delete %-#{longest_str}s => %-#{time_str.length}s" % [file, time_str]) do
+        delete file
+      end
+    end
+
+    list = fl.larger_than(size)
+    longest_str = list.keys.group_by(&:size).max.first
+
+    list.each do |file, data|
+      convert = Janitor::SizeConversion.new("#{data[size]}b")
+      converge_by("delete %-#{longest_str}s => %-8smb" % [file, convert.to_size(:mb)]) do
+        file file do
+          action  :delete
+        end
+      end
+    end
+
+  when !age.nil?
+    # Age only
+    list = fl.older_than(age)
+    longest_str = list.keys.group_by(&:size).max.first
+
+    list.each do |file, data|
+      time_str = Time.at(data['mtime']).strftime("%Y-%m-%d")
+      converge_by("delete %-#{longest_str}s => %-#{time_str.length}s" % [file, time_str]) do
+        file file do
+          action  :delete
+        end
+      end
+    end
+
+  when !size.nil?
+    # Size only
+    list = fl.larger_than(size)
+    longest_str = list.keys.group_by(&:size).max.first
+
+    list.each do |file, data|
+      convert = Janitor::SizeConversion.new("#{data[size]}b")
+      converge_by("delete %-#{longest_str}s => %-8smb" % [file, convert.to_size(:mb)]) do
+        file file do
+          action  :delete
+        end
+      end
+    end
+
+  else
+    list = fl.larger_than(size)
+    longest_str = list.keys.group_by(&:size).max.first
+
+    list.each do |file, data|
+      converge_by("delete %-#{longest_str}s" % [file]) do
+        file file do
+          action  :delete
+        end
+      end
+    end
+  end
+
+  new_resource.updated_by_last_action(true)
+end
+

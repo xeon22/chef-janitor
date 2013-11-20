@@ -16,62 +16,77 @@
 #
 
 module Janitor
-  require 'rake'
-    
-  def self.convert_to_epoch(days)
-  	return days - (60 * 60 * 24 * days.to_i)
-  end
-  
-  def self.file_exceeds_age(file, days)
-  	time = Time.now
-  	tstamp = time.strftime("%b%d%Y-%H%M")
-  	
-    filetime = ::File.new(file).mtime.to_i
-    purge_time = time - convert_to_epoch(days)
-    
-    return true if filetime < purge_time.to_i
-  end
-  
-  def self.filelist(path, recursive, include_glob, exclude_glob)
-    # Iterate over all files to find the matching criteria for deletion
-    files = ::FileList.new() do |f|
-      exclude_glob.each do |t|
-        r = Regexp.try_convert(t)
-        f.exclude(r) unless r.nil?
+  class Directory
+    def initialize(path, recursive=false)
+      raise "Directory not found: #{path}" unless File.directory?(path)
+      # Iterate over all files to find the matching criteria for deletion
+      if recursive
+        path_str = File.join(path, '**', '*')
+      else
+        path_str = File.join(path, '*')
+      end
+
+      @file_table = Hash.new
+
+      Dir[path_str].each do |file|
+        fstat = File.stat(file)
+        @file_table.store(
+          file,
+          {
+            'ctime' => fstat.ctime.to_i,
+            'mtime' => fstat.mtime.to_i,
+            'size' => fstat.size
+          }
+        )
       end
     end
-  
-    include_glob.each do |t|
-      include_str = ::File.join(path, t)
-      include_str = ::File.join(path, "**", t) if recursive
-      files.include(include_str)
+
+    def older_than(days)
+      purge_time = Time.now - (60 * 60 * 24 * days.to_i)
+
+      list = @file_table.select do |file, data|
+        data['mtime'] < purge_time.to_i
+      end
+
+      return list
     end
-      
-    return files
-  end
-  
-  def self.oldfile(file,age,isold=false)
-    if file_exceeds_age(file, age)
-      isold = true
+
+    def larger_than(size)
+      list = @file_table.select do |file, data|
+        c = SizeConversion.new(size.to_s)
+        data['size'].to_f > c.to_size(:b).to_f
+      end
+      return list
     end
-  
-    return isold
-  end
-  
-  def self.bigfile(file,size,isbig=false)
-    c = SizeConversion.new(size)
-    maxsize = c.to_size(:b)
-    if ::File.new(file).size > maxsize
-      isbig = true
+
+    def include_only(regexp)
+      @file_table.keep_if do |file|
+        file.match(Regexp.new(regexp))
+      end
+      return @file_table
     end
-  
-    return isbig
+
+    def exclude_all(regexp)
+      @file_table.delete_if do |file|
+        file.match(Regexp.new(regexp))
+      end
+      return @file_table
+    end
+
+    def get_list
+      @file_table.each_key { |t| puts t }
+      puts "Current number of files: #{@file_table.length}"
+    end
+
+    def to_hash
+      return @file_table
+    end
   end
-  
+
   class SizeConversion
     def initialize(size)
-    	@units = { 
-      	:b => 1,
+      @units = {
+        :b => 1,
         :kb => 1024**1,
         :mb => 1024**2,
         :gb => 1024**3,
@@ -79,34 +94,35 @@ module Janitor
         :pb => 1024**5,
         :eb => 1024**6
       }
-  
-    	@sizeunit = String.new
-      @sizeint 	= size.partition(/\D{1,2}/).at(0).to_i
+
+      @size_int = size.partition(/\D{1,2}/).at(0).to_i
       unit = size.partition(/\D{1,2}/).at(1).to_s.downcase
-    	
-      case 
+
+      case
       when unit.match(/[kmgtpe]{1}/)
         # append the b
-        @sizeunit = unit.concat('b')
+        @size_unit = unit.concat('b')
+
       when unit.match(/[kmgtpe]{1}b/)
-        @sizeunit = unit
+        @size_unit = unit
+
       else
-        @sizeunit = 'b'
+        @size_unit = 'b'
       end
     end
-    
+
     def to_size(unit, places=1)
-    	# expects bytes, returns chosen unit
-      bytes = @sizeint * @units[@sizeunit.to_sym]
-      size = bytes / @units[unit]
-      return size
-      # return sprintf("%.#{places}f", bytes / unitval)
+      # expects bytes, returns chosen unit
+      unit_val = @units[unit.to_s.downcase.to_sym]
+      bytes = @size_int * @units[@size_unit.to_sym]
+      size = bytes.to_f / unit_val.to_f
+      return sprintf("%.#{places}f", size).to_f
     end
-  
+
     def from_size(places=1)
-    	# expects any, returns bytes
-      unitval = @units[@sizeunit.to_s.downcase.to_sym]
-      return sprintf("%.#{places}f", @sizeint * unitval)
+      # expects any, returns bytes
+      unit_val = @units[@size_unit.to_s.downcase.to_sym]
+      return sprintf("%.#{places}f", @size_int * unit_val)
     end
   end
 end
