@@ -59,7 +59,9 @@ action :purge do
     list.each do |file, data|
       convert = Janitor::SizeConversion.new("#{data[size]}b")
       converge_by("delete %-#{longest_str}s => %-8smb" % [file, convert.to_size(:mb)]) do
-        delete file
+        file file do
+          action  :delete
+        end
       end
     end
 
@@ -71,7 +73,9 @@ action :purge do
     list.each do |file, data|
       time_str = Time.at(data['mtime']).strftime("%Y-%m-%d")
       converge_by("delete %-#{longest_str}s => %-#{time_str.length}s" % [file, time_str]) do
-        delete file
+        file file do
+          action  :delete
+        end
       end
     end
 
@@ -83,10 +87,25 @@ action :purge do
     list.each do |file, data|
       convert = Janitor::SizeConversion.new("#{data[size]}b")
       converge_by("delete %-#{longest_str}s => %-8smb" % [file, convert.to_size(:mb)]) do
-        delete file
+        file file do
+          action  :delete
+        end
+      end
+    end
+
+  else
+    list = fl.larger_than(size)
+    longest_str = list.keys.group_by(&:size).max.first
+
+    list.each do |file, data|
+      converge_by("delete %-#{longest_str}s" % [file]) do
+        file file do
+          action  :delete
+        end
       end
     end
   end
 
   new_resource.updated_by_last_action(true)
 end
+

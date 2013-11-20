@@ -9,6 +9,6 @@ version    "1.0.0"
 # Should work on any of the linuxes
 # Have not tested windows, however all path references have been abstracted
 
-%w{redhat centos debian ubuntu}.each do |os|
+%w{redhat centos debian ubuntu mac_os_x mac_os_x_server}.each do |os|
   supports os
 end
