@@ -2,7 +2,7 @@
 
 This cookbook is meant to keep order on a running node to purge files
 on the filesystem that are unwanted.  You could also apply some criteria to the files
-that are targeted such as glob patterns, age, and size.
+that are targeted such as regular expressions, age, and size.
 
 # Requirements
 
