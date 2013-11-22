@@ -52,10 +52,13 @@ action :purge do
       longest_str = 1
     end
 
-    list.each do |file, data|
+    list.each do |fname, data|
       time_str = Time.at(data['mtime']).strftime("%Y-%m-%d")
-      converge_by("delete %-#{longest_str}s => %-#{time_str.length}s" % [file, time_str]) do
-        delete file
+      converge_by("delete %-#{longest_str}s => %-#{time_str.length}s" % [fname, time_str]) do
+        file "#{fname}" do
+          backup false
+          action  :delete
+        end
       end
     end
 
@@ -64,8 +67,9 @@ action :purge do
 
     list.each do |fname, data|
       convert = Janitor::SizeConversion.new("#{data[size]}b")
-      converge_by("delete %-#{longest_str}s => %-8smb" % [fname, convert.to_size(:mb)]) do
-        file fname do
+      converge_by("delete %-#{longest_str}s => %-8s MB" % [fname, convert.to_size(:mb)]) do
+        file "#{fname}" do
+          backup false
           action  :delete
         end
       end
@@ -82,11 +86,11 @@ action :purge do
       longest_str = 1
     end
 
-
     list.each do |fname, data|
       time_str = Time.at(data['mtime']).strftime("%Y-%m-%d")
       converge_by("delete %-#{longest_str}s => %-#{time_str.length}s" % [fname, time_str]) do
-        file fname do
+        file "#{fname}" do
+          backup false
           action  :delete
         end
       end
@@ -105,8 +109,9 @@ action :purge do
 
     list.each do |fname, data|
       convert = Janitor::SizeConversion.new("#{data[size]}b")
-      converge_by("delete %-#{longest_str}s => %-8smb" % [fname, convert.to_size(:mb)]) do
-        file fname do
+      converge_by("delete %-#{longest_str}s => %-8s MB" % [fname, convert.to_size(:mb)]) do
+        file "#{fname}" do
+          backup false
           action  :delete
         end
       end
@@ -118,7 +123,8 @@ action :purge do
 
     list.each do |fname, data|
       converge_by("delete %-#{longest_str}s" % [fname]) do
-        file fname do
+        file "#{fname}" do
+          backup false
           action  :delete
         end
       end
