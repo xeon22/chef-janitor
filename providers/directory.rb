@@ -44,7 +44,13 @@ action :purge do
   when (!age.nil? and !size.nil?)
     # Execute both
     list = fl.older_than(age)
-    longest_str = list.keys.group_by(&:size).max.first
+
+    begin
+      longest_str = list.keys.group_by(&:size).max.first
+    rescue NoMethodError
+      Chef::Log.warn("*** Criteria supplied produces no results ***")
+      longest_str = 1
+    end
 
     list.each do |file, data|
       time_str = Time.at(data['mtime']).strftime("%Y-%m-%d")
@@ -68,7 +74,14 @@ action :purge do
   when !age.nil?
     # Age only
     list = fl.older_than(age)
-    longest_str = list.keys.group_by(&:size).max.first
+
+    begin
+      longest_str = list.keys.group_by(&:size).max.first
+    rescue NoMethodError
+      Chef::Log.warn("*** Criteria supplied produces no results ***")
+      longest_str = 1
+    end
+
 
     list.each do |file, data|
       time_str = Time.at(data['mtime']).strftime("%Y-%m-%d")
@@ -82,7 +95,13 @@ action :purge do
   when !size.nil?
     # Size only
     list = fl.larger_than(size)
-    longest_str = list.keys.group_by(&:size).max.first
+
+    begin
+      longest_str = list.keys.group_by(&:size).max.first
+    rescue NoMethodError
+      Chef::Log.warn("*** Criteria supplied produces no results ***")
+      longest_str = 1
+    end
 
     list.each do |file, data|
       convert = Janitor::SizeConversion.new("#{data[size]}b")
