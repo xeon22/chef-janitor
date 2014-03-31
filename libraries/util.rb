@@ -25,11 +25,12 @@ module Janitor
       else
         path_str = File.join(path, '*')
       end
-
+      @dir_size   = 0
       @file_table = Hash.new
 
       Dir[path_str].each do |file|
         fstat = File.stat(file)
+        @dir_size += fstat.size
         @file_table.store(
           file,
           {
@@ -55,6 +56,28 @@ module Janitor
       list = @file_table.select do |file, data|
         c = SizeConversion.new(size.to_s)
         data['size'].to_f > c.to_size(:b).to_f
+      end
+      return list
+    end
+
+    def to_dir_size(size)
+      sorted = @file_table.sort_by { |k,v| v['mtime'] }
+      c = SizeConversion.new(size.to_s)
+      delete_size = @dir_size - c.to_size(:b).to_f
+
+      if delete_size <= 0
+        return {} 
+      end
+
+      f_size = 0
+      list = {}
+      puts sorted
+      sorted.each do |f|
+        list[f[0]] = f[1]
+        f_size += f[1]['size']
+        if f_size >= delete_size
+          break
+        end
       end
       return list
     end
