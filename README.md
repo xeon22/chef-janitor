@@ -53,6 +53,9 @@ Chef, Linux
 * `size` - Files larger than the `size` (in b,M,G,T,P) will be deleted.
     * Defaults to `nil`.
 
+* `directory_size` - Old files are removed until directory is at or below given size
+    * Defaults to `nil`.
+
 * `recursive` - enable recursive searching from the path indicated in the resource
     * Defaults to `false`
 
@@ -78,6 +81,12 @@ Chef, Linux
       age             30
       size            "10M"
       recursive       true
+      action          :purge
+    end
+    
+    # Delete old files fom /var/log until directory is below 2G
+    janitor_directory "/var/log" do
+      directory_size  "2G"
       action          :purge
     end
 ```
