@@ -63,7 +63,13 @@ action :purge do
     end
 
     list = fl.larger_than(size)
-    longest_str = list.keys.group_by(&:size).max.first
+
+    begin
+      longest_str = list.keys.group_by(&:size).max.first
+    rescue NoMethodError
+      Chef::Log.warn("*** Criteria supplied produces no results ***")
+      longest_str = 1
+    end
 
     list.each do |fname, data|
       convert = Janitor::SizeConversion.new("#{data[size]}b")
@@ -119,7 +125,12 @@ action :purge do
 
   else
 
-    longest_str = fl.keys.group_by(&:size).max.first
+    begin
+      longest_str = fl.keys.group_by(&:size).max.first
+    rescue NoMethodError
+      Chef::Log.warn("*** Criteria supplied produces no results ***")
+      longest_str = 1
+    end
 
     fl.each do |fname, data|
       converge_by("delete %-#{longest_str}s" % [fname]) do

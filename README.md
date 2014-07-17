@@ -88,15 +88,15 @@ actually having to call the resource
     end
 
     # same examples as above:
-    default['manage']['directory']['cleanup']['some-name']['directory'] = "/var/log"
-    default['manage']['directory']['cleanup']['some-name']['include_only'] = [/.*\.gz$]
+    default['janitor']['directory']['some-name']['directory'] = "/var/log"
+    default['janitor']['directory']['some-name']['include_only'] = [/.*\.gz$]
 
-    default['manage']['directory']['cleanup']['some-other-name']['directory'] = "/var/log"
-    default['manage']['directory']['cleanup']['some-other-name']['include_only'] = [/.*\.gz$,/.*\.\d/]
+    default['janitor']['directory']['some-other-name']['directory'] = "/var/log"
+    default['janitor']['directory']['some-other-name']['include_only'] = [/.*\.gz$,/.*\.\d/]
 
-    default['manage']['directory']['cleanup']['some-third-name']['directory'] = "/var/log"
-    default['manage']['directory']['cleanup']['some-third-name']['include_only'] = [/.*\.gz$]
-    default['manage']['directory']['cleanup']['some-third-name']['age'] = 30
-    default['manage']['directory']['cleanup']['some-third-name']['size'] = "10M"
-    default['manage']['directory']['cleanup']['some-third-name']['recursive'] = true
+    default['janitor']['directory']['some-third-name']['directory'] = "/var/log"
+    default['janitor']['directory']['some-third-name']['include_only'] = [/.*\.gz$]
+    default['janitor']['directory']['some-third-name']['age'] = 30
+    default['janitor']['directory']['some-third-name']['size'] = "10M"
+    default['janitor']['directory']['some-third-name']['recursive'] = true
 ```

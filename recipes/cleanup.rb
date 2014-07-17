@@ -5,33 +5,20 @@
 # Copyright 2014, Schuberg Philis
 #
 
-cleanups = node['manage']['directory']['cleanup']
-if !cleanups.nil?
+if !node['janitor'].nil? and !node['janitor']['directory'].nil?
 
-  # log("cleanup: #{cleanups.length} entries to process")
-  cleanups.sort.each do |jan_info|
-
-    nam = jan_info.first
+  Chef::Log.info("janitor: #{node['janitor']['directory'].length} entries to process")
+  node['janitor']['directory'].sort.each do |jan_info|
     jan = jan_info.last
-
-    inc = !jan['include_only'].nil?	? jan['include_only']	: []
-    exc = !jan['exclude_all'].nil?	? jan['exclude_all']	: []
-    rec = !jan['recursive'].nil?	? jan['recursive']	: false
-    dir =				  jan['path']
-    age =				  jan['age']
-    siz =				  jan['size']
-
-    janitor_directory "#{dir}" do
-      age		age unless age.nil?
-      size		siz unless siz.nil?
-      include_only	inc unless inc.nil?
-      exclude_all	exc unless exc.nil?
-      recursive		rec
+    janitor_directory "#{jan['path']}" do
+      age		jan['age'] unless jan['age'].nil?
+      size		jan['size'] unless jan['size'].nil?
+      include_only	!jan['include_only'].nil? ? jan['include_only'] : []
+      exclude_all	!jan['exclude_all'].nil?  ? jan['exclude_all']  : []
+      recursive		!jan['recursive'].nil?    ? jan['recursive']    : false
       action		:purge
     end
 
   end
 
 end
-
-# vim: set sw=2:
