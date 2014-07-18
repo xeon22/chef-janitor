@@ -6,9 +6,6 @@ description      "A General Cookbook used to cleanup files and directories on no
 long_description IO.read(File.join(File.dirname(__FILE__), 'README.md'))
 version    "1.0.3"
 
-# Should work on any of the linuxes
-# Have not tested windows, however all path references have been abstracted
-
-%w{redhat centos debian ubuntu mac_os_x mac_os_x_server}.each do |os|
+%w{windows redhat centos debian ubuntu mac_os_x mac_os_x_server}.each do |os|
   supports os
 end

@@ -33,7 +33,7 @@ action :purge do
   raise "Directory #{path} not found" unless ::Dir.exists?(path)
 
   # Iterate over all files to find the matching criteria for deletion
-  fl = Janitor::Directory.new(path, :recursive => recursive)
+  fl = Janitor::Directory.new(path, recursive)
 
   fl.include_only(Regexp.union(include_only)) unless include_only.nil?
   fl.exclude_all(Regexp.union(exclude_all)) unless exclude_all.nil?
@@ -63,7 +63,13 @@ action :purge do
     end
 
     list = fl.larger_than(size)
-    longest_str = list.keys.group_by(&:size).max.first
+
+    begin
+      longest_str = list.keys.group_by(&:size).max.first
+    rescue NoMethodError
+      Chef::Log.warn("*** Criteria supplied produces no results ***")
+      longest_str = 1
+    end
 
     list.each do |fname, data|
       convert = Janitor::SizeConversion.new("#{data[size]}b")
@@ -118,10 +124,15 @@ action :purge do
     end
 
   else
-    list = fl.larger_than(size)
-    longest_str = list.keys.group_by(&:size).max.first
 
-    list.each do |fname, data|
+    begin
+      longest_str = fl.keys.group_by(&:size).max.first
+    rescue NoMethodError
+      Chef::Log.warn("*** Criteria supplied produces no results ***")
+      longest_str = 1
+    end
+
+    fl.each do |fname, data|
       converge_by("delete %-#{longest_str}s" % [fname]) do
         file "#{fname}" do
           backup false

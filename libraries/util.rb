@@ -30,14 +30,16 @@ module Janitor
 
       Dir[path_str].each do |file|
         fstat = File.stat(file)
-        @file_table.store(
-          file,
-          {
-            'ctime' => fstat.ctime.to_i,
-            'mtime' => fstat.mtime.to_i,
-            'size' => fstat.size
-          }
-        )
+	if fstat.file?
+	  @file_table.store(
+	    file,
+	    {
+	      'ctime' => fstat.ctime.to_i,
+	      'mtime' => fstat.mtime.to_i,
+	      'size' => fstat.size
+	    }
+	  )
+	end
       end
     end
 

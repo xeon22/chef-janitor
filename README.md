@@ -6,7 +6,7 @@ that are targeted such as regular expressions, age, and size.
 
 # Requirements
 
-Chef, Linux
+Chef, Linux, Windows
 
 ## Platform:
 
@@ -15,7 +15,7 @@ Chef, Linux
 * ubuntu
 * debian
 * macos
-* Good possibility it will work in windows as all path references have been abstracted. (Not tested)
+* windows
 
 ## Cookbooks:
 
@@ -56,6 +56,12 @@ Chef, Linux
 * `recursive` - enable recursive searching from the path indicated in the resource
     * Defaults to `false`
 
+### Attribute driven
+
+Can also be driven by attribute settings by running "recipe[janitor::cleanup]"
+This can be used by different cookbooks maintaining different directories without
+actually having to call the resource
+
 ### Examples
 
 ```
@@ -80,4 +86,17 @@ Chef, Linux
       recursive       true
       action          :purge
     end
+
+    # same examples as above:
+    default['janitor']['directory']['some-name']['directory'] = "/var/log"
+    default['janitor']['directory']['some-name']['include_only'] = [/.*\.gz$]
+
+    default['janitor']['directory']['some-other-name']['directory'] = "/var/log"
+    default['janitor']['directory']['some-other-name']['include_only'] = [/.*\.gz$,/.*\.\d/]
+
+    default['janitor']['directory']['some-third-name']['directory'] = "/var/log"
+    default['janitor']['directory']['some-third-name']['include_only'] = [/.*\.gz$]
+    default['janitor']['directory']['some-third-name']['age'] = 30
+    default['janitor']['directory']['some-third-name']['size'] = "10M"
+    default['janitor']['directory']['some-third-name']['recursive'] = true
 ```
