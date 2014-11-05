@@ -26,9 +26,11 @@ action :purge do
   path = new_resource.path
   age = new_resource.age
   size = new_resource.size
+  dir_size = new_resource.directory_size
   recursive = new_resource.recursive
   include_only = new_resource.include_only
   exclude_all = new_resource.exclude_all
+  updated = false
 
   raise "Directory #{path} not found" unless ::Dir.exists?(path)
 
@@ -39,98 +41,27 @@ action :purge do
   fl.exclude_all(Regexp.union(exclude_all)) unless exclude_all.nil?
 
   Chef::Log.info("#{fl.to_hash.length} files to process")
+  
+  del_files = {} 
+  del_files.merge!(fl.older_than(age)) unless age.nil?
+  del_files.merge!(fl.larger_than(size)) unless size.nil?
+  del_files.merge!(fl.to_dir_size(dir_size)) unless dir_size.nil?
 
-  case
-  when (!age.nil? and !size.nil?)
-    # Execute both
-    list = fl.older_than(age)
+  longest_str = del_files.keys.group_by(&:size).max.first unless del_files.size == 0
 
-    begin
-      longest_str = list.keys.group_by(&:size).max.first
-    rescue NoMethodError
-      Chef::Log.warn("*** Criteria supplied produces no results ***")
-      longest_str = 1
-    end
+  del_files.each do |fname,data|
+    time_str = Time.at(data['mtime']).strftime("%Y-%m-%d")
+    convert  = Janitor::SizeConversion.new("#{data['size']}b").to_size(:mb)
+    c_string = "delete %-#{longest_str}s => %-#{time_str.length}s %-8s MB" % [fname,time_str,convert]
 
-    list.each do |fname, data|
-      time_str = Time.at(data['mtime']).strftime("%Y-%m-%d")
-      converge_by("delete %-#{longest_str}s => %-#{time_str.length}s" % [fname, time_str]) do
-        file "#{fname}" do
-          backup false
-          action  :delete
-        end
+    converge_by(c_string) do
+      file fname do
+        backup false
+        action :delete
       end
     end
-
-    list = fl.larger_than(size)
-    longest_str = list.keys.group_by(&:size).max.first
-
-    list.each do |fname, data|
-      convert = Janitor::SizeConversion.new("#{data[size]}b")
-      converge_by("delete %-#{longest_str}s => %-8s MB" % [fname, convert.to_size(:mb)]) do
-        file "#{fname}" do
-          backup false
-          action  :delete
-        end
-      end
-    end
-
-  when !age.nil?
-    # Age only
-    list = fl.older_than(age)
-
-    begin
-      longest_str = list.keys.group_by(&:size).max.first
-    rescue NoMethodError
-      Chef::Log.warn("*** Criteria supplied produces no results ***")
-      longest_str = 1
-    end
-
-    list.each do |fname, data|
-      time_str = Time.at(data['mtime']).strftime("%Y-%m-%d")
-      converge_by("delete %-#{longest_str}s => %-#{time_str.length}s" % [fname, time_str]) do
-        file "#{fname}" do
-          backup false
-          action  :delete
-        end
-      end
-    end
-
-  when !size.nil?
-    # Size only
-    list = fl.larger_than(size)
-
-    begin
-      longest_str = list.keys.group_by(&:size).max.first
-    rescue NoMethodError
-      Chef::Log.warn("*** Criteria supplied produces no results ***")
-      longest_str = 1
-    end
-
-    list.each do |fname, data|
-      convert = Janitor::SizeConversion.new("#{data[size]}b")
-      converge_by("delete %-#{longest_str}s => %-8s MB" % [fname, convert.to_size(:mb)]) do
-        file "#{fname}" do
-          backup false
-          action  :delete
-        end
-      end
-    end
-
-  else
-    list = fl.larger_than(size)
-    longest_str = list.keys.group_by(&:size).max.first
-
-    list.each do |fname, data|
-      converge_by("delete %-#{longest_str}s" % [fname]) do
-        file "#{fname}" do
-          backup false
-          action  :delete
-        end
-      end
-    end
+    updated = true
   end
-
-  new_resource.updated_by_last_action(true)
+  new_resource.updated_by_last_action(updated)
 end
 
