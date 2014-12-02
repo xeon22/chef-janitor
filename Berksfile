@@ -1,6 +1,5 @@
 
-site        :opscode
-chef_api    :config
+source "https://supermarket.getchef.com"
 
 group :integration do
   cookbook 'minitest-handler'
