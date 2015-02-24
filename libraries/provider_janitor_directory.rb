@@ -101,10 +101,9 @@ class Chef
             #
             # Wrap the delete in a file resources for tracking and better visibility with reporting
             #
-            file fname do
-              backup false
-              action :delete
-            end
+            f = Chef::Resource::File.new(fname,run_context)
+            f.backup false
+            f.run_action(:delete)
           end
           updated = true
         end
