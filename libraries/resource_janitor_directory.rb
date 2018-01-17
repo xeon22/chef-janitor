@@ -35,6 +35,7 @@ class Chef
         # Now we need to set up any resource defaults
         @name            = name
         @path            = name
+        @recursive       = false
       end
 
       # Define the attributes we set defaults for
@@ -64,7 +65,7 @@ class Chef
         set_or_return(:size, arg, kind_of: [String], regex: /\d+[kmgtpe]{1}b{0,1}/i)
       end
 
-      def recursive(arg=false)
+      def recursive(arg=nil)
         set_or_return(:recursive, arg, kind_of: [TrueClass, FalseClass])
       end
     end
